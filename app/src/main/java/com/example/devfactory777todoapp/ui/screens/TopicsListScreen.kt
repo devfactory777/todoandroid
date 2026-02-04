@@ -25,43 +25,35 @@ import com.example.devfactory777todoapp.models.Task
 import com.example.devfactory777todoapp.models.Topic
 import com.example.devfactory777todoapp.ui.theme.*
 
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.viewmodel.compose.viewModel
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TopicsListScreen(
     onTopicClick: (String) -> Unit,
-    onAddTopicClick: () -> Unit
+    onAddTopicClick: () -> Unit,
+    viewModel: TopicsListViewModel = viewModel()
 ) {
-    val topics = remember {
-        listOf(
-            Topic(
-                id = "1",
-                name = "Work",
-                iconName = "work",
-                colorHex = 0xFFDBEAFE,
-                tasks = List(8) { Task(it.toString(), "Task $it", it < 4) }
-            ),
-            Topic(
-                id = "2",
-                name = "Personal",
-                iconName = "home",
-                colorHex = 0xFFF3E8FF,
-                tasks = List(5) { Task(it.toString(), "Task $it", it < 1) }
-            ),
-            Topic(
-                id = "3",
-                name = "Groceries",
-                iconName = "shopping_cart",
-                colorHex = 0xFFDCFCE7,
-                tasks = List(12) { Task(it.toString(), "Task $it", true) }
-            ),
-            Topic(
-                id = "4",
-                name = "Fitness",
-                iconName = "fitness_center",
-                colorHex = 0xFFFFEDD5,
-                tasks = List(3) { Task(it.toString(), "Task $it", false) }
-            )
-        )
+    val topics by viewModel.topics.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+
+
+    // Refresh topics when screen is potentially revisited
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.loadTopics()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     Scaffold(
@@ -85,12 +77,18 @@ fun TopicsListScreen(
         ) {
             Header()
             SearchBar()
-            LazyColumn(
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(topics) { topic ->
-                    TopicCard(topic = topic, onClick = { onTopicClick(topic.id) })
+            if (isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Primary)
+                }
+            } else {
+                LazyColumn(
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(topics) { topic ->
+                        TopicCard(topic = topic, onClick = { onTopicClick(topic.id) })
+                    }
                 }
             }
         }
@@ -139,10 +137,13 @@ fun SearchBar() {
             .height(56.dp),
         shape = RoundedCornerShape(12.dp),
         colors = TextFieldDefaults.colors(
-            focusedContainerColor = Color.White,
-            unfocusedContainerColor = Color.White,
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
             focusedIndicatorColor = Color.Transparent,
-            unfocusedIndicatorColor = Color.Transparent
+            unfocusedIndicatorColor = Color.Transparent,
+            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+            cursorColor = Primary
         )
     )
 }
@@ -154,7 +155,7 @@ fun TopicCard(topic: Topic, onClick: () -> Unit) {
             .fillMaxWidth()
             .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {

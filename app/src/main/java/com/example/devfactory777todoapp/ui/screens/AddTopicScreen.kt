@@ -3,7 +3,17 @@ package com.example.devfactory777todoapp.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -11,10 +21,25 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,23 +48,37 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.devfactory777todoapp.ui.theme.Primary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddTopicScreen(
     onBackClick: () -> Unit,
-    onCreateTopic: () -> Unit
+    onCreateTopic: () -> Unit,
+    viewModel: AddTopicViewModel = viewModel()
 ) {
     var topicName by remember { mutableStateOf("") }
     var selectedIcon by remember { mutableStateOf("star") }
     var selectedColor by remember { mutableStateOf(Primary) }
 
-    val icons = listOf("home", "work", "book", "fitness_center", "favorite", "shopping_cart", "flight", "palette")
+    val isLoading by viewModel.isLoading.collectAsState()
+
+    val icons = listOf(
+        "home",
+        "work",
+        "book",
+        "fitness_center",
+        "favorite",
+        "shopping_cart",
+        "flight",
+        "palette"
+    )
     val colors = listOf(
         Primary, Color(0xFFF43F5E), Color(0xFF10B981), Color(0xFFF59E0B),
         Color(0xFF6366F1), Color(0xFFA855F7), Color(0xFFF97316), Color(0xFF1E293B)
     )
+
 
     Scaffold(
         topBar = {
@@ -59,14 +98,31 @@ fun AddTopicScreen(
                     }
                 },
                 actions = {
-                    TextButton(onClick = onCreateTopic) {
-                        Text("Create", color = Primary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    TextButton(
+                        onClick = {
+                            if (topicName.isNotBlank()) {
+                                viewModel.createTopic(
+                                    topicName,
+                                    selectedIcon,
+                                    selectedColor.value.toLong()
+                                ) {
+                                    onCreateTopic()
+                                }
+                            }
+                        }
+                    ) {
+                        Text(
+                            "Create",
+                            color = Primary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
         },
-        containerColor = Color.White
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Column(
             modifier = Modifier
@@ -93,7 +149,11 @@ fun AddTopicScreen(
                         .background(selectedColor, RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(getIconForName(selectedIcon), contentDescription = null, tint = Color.White)
+                    Icon(
+                        getIconForName(selectedIcon),
+                        contentDescription = null,
+                        tint = Color.White
+                    )
                 }
                 TextField(
                     value = topicName,
@@ -104,9 +164,15 @@ fun AddTopicScreen(
                         focusedContainerColor = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,
                         focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
+                        unfocusedIndicatorColor = Color.Transparent,
+                        focusedTextColor = Color.Black,
+                        unfocusedTextColor = Color.Black,
+                        cursorColor = Primary
                     ),
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 18.sp
+                    )
                 )
             }
 
@@ -125,7 +191,11 @@ fun AddTopicScreen(
                             .aspectRatio(1f)
                             .clip(RoundedCornerShape(12.dp))
                             .background(if (isSelected) Primary else Color(0xFFF8FAFC))
-                            .border(1.dp, if (isSelected) Primary else Color(0xFFF1F5F9), RoundedCornerShape(12.dp))
+                            .border(
+                                1.dp,
+                                if (isSelected) Primary else Color(0xFFF1F5F9),
+                                RoundedCornerShape(12.dp)
+                            )
                             .clickable { selectedIcon = iconName },
                         contentAlignment = Alignment.Center
                     ) {
@@ -139,7 +209,10 @@ fun AddTopicScreen(
             }
 
             // Pick Color Section
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
                 SectionHeader("Pick Color")
                 Text("Blue", color = Primary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
@@ -155,7 +228,10 @@ fun AddTopicScreen(
                             .clip(CircleShape)
                             .background(color)
                             .let {
-                                if (isSelected) it.border(2.dp, Color.White, CircleShape).padding(2.dp).border(2.dp, Primary, CircleShape) else it
+                                if (isSelected) it
+                                    .border(2.dp, Color.White, CircleShape)
+                                    .padding(2.dp)
+                                    .border(2.dp, Primary, CircleShape) else it
                             }
                             .clickable { selectedColor = color }
                     )
@@ -182,14 +258,34 @@ fun AddTopicScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Button(
-                onClick = onCreateTopic,
+                onClick = {
+                    if (topicName.isNotBlank()) {
+                        // Helper to get hex from Color.
+                        // Color.value is ULong.
+                        // ARGB. We need just the RGB part usually or fully ARGB?
+                        // The existing logic used 0xFF...
+                        // color.value.toLong() -> gives 0xFF...
+                        viewModel.createTopic(
+                            topicName,
+                            selectedIcon,
+                            selectedColor.value.toLong()
+                        ) {
+                            onCreateTopic()
+                        }
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Primary)
+                colors = ButtonDefaults.buttonColors(containerColor = Primary),
+                enabled = !isLoading && topicName.isNotBlank()
             ) {
-                Text("Create Topic", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                if (isLoading) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                } else {
+                    Text("Create Topic", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                }
             }
 
             TextButton(

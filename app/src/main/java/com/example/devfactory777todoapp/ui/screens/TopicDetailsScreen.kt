@@ -1,17 +1,51 @@
 package com.example.devfactory777todoapp.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.rounded.ArrowBackIosNew
 import androidx.compose.material.icons.rounded.MoreHoriz
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -21,42 +55,35 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.devfactory777todoapp.models.Task
 import com.example.devfactory777todoapp.models.Topic
 import com.example.devfactory777todoapp.ui.theme.Primary
+import androidx.compose.foundation.layout.navigationBarsPadding
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TopicDetailsScreen(
     topicId: String,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    viewModel: TopicDetailsViewModel = viewModel(factory = TopicDetailsViewModelFactory(topicId))
 ) {
-    // Sample data for "Weekly Groceries"
-    var topic by remember {
-        mutableStateOf(
-            Topic(
-                id = "3",
-                name = "Groceries",
-                iconName = "shopping_cart",
-                colorHex = 0xFFDCFCE7,
-                description = "Organize your shopping list",
-                tasks = listOf(
-                    Task("1", "Organic Honey (200g)", true),
-                    Task("2", "Unsweetened Almond Milk", false),
-                    Task("3", "Fresh Spinach (Bulk pack)", false),
-                    Task("4", "Whole Grain Bread", false),
-                    Task("5", "Greek Yogurt (Plain)", false)
-                )
-            )
-        )
+    val topic by viewModel.topic.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+
+    // Refresh on entry
+    LaunchedEffect(topicId) {
+        viewModel.loadTopic()
     }
+
+    val topAppBarColors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        "Weekly Groceries",
+                        text = topic?.name ?: "Loading...",
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center,
                         fontSize = 18.sp,
@@ -73,36 +100,59 @@ fun TopicDetailsScreen(
                         Icon(Icons.Rounded.MoreHoriz, contentDescription = "More")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = topAppBarColors
             )
         },
         bottomBar = {
-            BottomBar()
+            BottomBar(
+                onAddTask = { title ->
+                    viewModel.addTask(title)
+                }
+            )
         },
-        containerColor = Color.White
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            TopicHeader(topic)
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+        if (isLoading && topic == null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
             ) {
-                items(topic.tasks) { task ->
-                    TaskItem(
-                        task = task,
-                        onCheckedChange = { checked ->
-                            topic = topic.copy(tasks = topic.tasks.map {
-                                if (it.id == task.id) it.copy(isCompleted = checked) else it
-                            })
-                        },
-                        onDeleteClick = {
-                            topic = topic.copy(tasks = topic.tasks.filter { it.id != task.id })
+                CircularProgressIndicator(color = Primary)
+            }
+        } else {
+            topic?.let { currentTopic ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                ) {
+                    TopicHeader(currentTopic)
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .consumeWindowInsets(padding) // Consumes scaffold padding
+                            .imePadding(), // Pushes up for keyboard
+                        contentPadding = PaddingValues(
+                            top = 24.dp, 
+                            bottom = padding.calculateBottomPadding() + 80.dp, 
+                            start = 16.dp, 
+                            end = 16.dp
+                        )
+                    ) {
+                        items(currentTopic.tasks) { task ->
+                            TaskItem(
+                                task = task,
+                                onCheckedChange = { checked ->
+                                    viewModel.toggleTaskCompletion(task, checked)
+                                },
+                                onDeleteClick = {
+                                    viewModel.deleteTask(task)
+                                }
+                            )
                         }
-                    )
+                    }
                 }
             }
         }
@@ -118,8 +168,8 @@ fun TopicHeader(topic: Topic) {
             verticalAlignment = Alignment.Bottom
         ) {
             Column {
-                Text(text = topic.name, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                Text(text = topic.description, fontSize = 14.sp, color = Color.Gray)
+                Text(text = topic.name, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text(text = topic.description, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Text(
                 text = "${topic.completedCount}/${topic.totalCount} completed",
@@ -168,7 +218,7 @@ fun TaskItem(
             text = task.title,
             modifier = Modifier.weight(1f),
             fontSize = 16.sp,
-            color = if (task.isCompleted) Color.LightGray else Color(0xFF0D151B),
+            color = if (task.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
             textDecoration = if (task.isCompleted) TextDecoration.LineThrough else TextDecoration.None
         )
         IconButton(onClick = onDeleteClick) {
@@ -179,10 +229,15 @@ fun TaskItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BottomBar() {
+fun BottomBar(
+    onAddTask: (String) -> Unit
+) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = Color.White.copy(alpha = 0.8f),
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .imePadding(),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
         shadowElevation = 8.dp
     ) {
         Row(
@@ -202,14 +257,22 @@ fun BottomBar() {
                     .height(56.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color(0xFFF1F5F9),
-                    unfocusedContainerColor = Color(0xFFF1F5F9),
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                     focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent
+                    unfocusedIndicatorColor = Color.Transparent,
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    cursorColor = Primary
                 )
             )
             IconButton(
-                onClick = { },
+                onClick = {
+                    if (text.isNotBlank()) {
+                        onAddTask(text)
+                        text = ""
+                    }
+                },
                 modifier = Modifier
                     .size(56.dp)
                     .background(Primary, RoundedCornerShape(16.dp))

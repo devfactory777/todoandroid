@@ -12,15 +12,20 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.devfactory777todoapp.data.SupabaseModule
 import com.example.devfactory777todoapp.ui.screens.AddTopicScreen
+import com.example.devfactory777todoapp.ui.screens.LoginScreen
 import com.example.devfactory777todoapp.ui.screens.TopicDetailsScreen
 import com.example.devfactory777todoapp.ui.screens.TopicsListScreen
 import com.example.devfactory777todoapp.ui.theme.TodoAppTheme
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.handleDeeplinks
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        SupabaseModule.client.handleDeeplinks(intent)
         setContent {
             TodoAppTheme {
                 Surface(
@@ -37,7 +42,19 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun TodoApp() {
     val navController = rememberNavController()
-    NavHost(navController = navController, startDestination = "topics_list") {
+    val startDestination =
+        if (SupabaseModule.client.auth.currentSessionOrNull() != null) "topics_list" else "login"
+
+    NavHost(navController = navController, startDestination = startDestination) {
+        composable("login") {
+            LoginScreen(
+                onLoginSuccess = {
+                    navController.navigate("topics_list") {
+                        popUpTo("login") { inclusive = true }
+                    }
+                }
+            )
+        }
         composable("topics_list") {
             TopicsListScreen(
                 onTopicClick = { topicId ->
